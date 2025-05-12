@@ -1,3 +1,6 @@
+// Gauss1.cpp
+// Modificado para ser usado como una librería por ee_completo.cpp
+
 /* Rutina para generacion de numeros aleatorios gaussianos con
    media cero y desviacion estandar sigma.
 
@@ -13,37 +16,52 @@
 #include <stdlib.h> // Para rand(), srand(), RAND_MAX
 #include <time.h>   // Para time()
 #include <math.h>   // Para sqrt(), log(), exp()
-#include <sys/types.h> // Puede no ser estrictamente necesario en todos los sistemas modernos para este código
-#include <iostream> // Para std::cout y std::endl en la función main
+#include <sys/types.h> 
+// #include <iostream> // Ya no se necesita aquí si main() se elimina
 
-#define NRAND_SAMPLES 5 // Definido pero no usado en el código proporcionado
+// Si incluyes tu propio cabecero, puedes hacerlo, pero no es estrictamente necesario
+// #include "gauss1.h" 
+
 #define Uniform randreal // Macro para llamar a randreal
 
-// Variables estáticas globales
-static int g_Seed = 0;    // Renombrado para evitar confusión con parámetros de función.
-                          // Si es 0, se usará time(NULL) para la semilla.
-static int g_isinit = 0;  // Bandera para saber si srand() ya fue llamado.
+// Variables estáticas globales (específicas de este archivo gracias a static)
+static int g_Seed_gauss = 0;    // Renombrado para evitar conflicto si hay otros g_Seed globales
+static int g_isinit_gauss = 0;  // Renombrado para evitar conflicto
 
-// Prototipos de funciones (buena práctica tenerlos, aunque C++ puede inferirlos si están antes del uso)
-double randreal(void);
-void initrandom(int seed_val); // Cambiado nombre de parámetro
-double Gauss(double sigma);
-double N(double m, double sigma);
-int randint(int lo, int hi);
+// Prototipos internos si son necesarios antes de su uso en este mismo archivo
+// (ya están antes de su uso en el código que proporcionaste)
+
+// Genera un número aleatorio real entre [0, 1]
+// Esta función es usada por Gauss()
+double randreal(void) // No es necesario que sea static si se declara en gauss1.h
+{
+    double result;
+
+    if (!g_isinit_gauss) {
+        if (g_Seed_gauss == 0) { 
+            srand((unsigned int)time(NULL)); 
+        } else {
+            srand((unsigned int)g_Seed_gauss); 
+        }
+        g_isinit_gauss = 1;
+    }
+    result = ((double)rand());
+    result /= ((double)RAND_MAX); 
+
+    return (result);
+}
 
 // Implementación de la función Gauss
-double Gauss(double sigma)
+// Genera N(0, sigma)
+double Gauss(double sigma) // No es necesario que sea static si se declara en gauss1.h
 {
     double ret_val;
-    // static double d, u, x, y, u0, u1, u2; // 'd' no se usa.
-    static double u, x, y, u0, u1, u2;
+    static double u, x, y, u0, u1, u2; // Estas variables 'static' mantienen su valor entre llamadas a Gauss
+                                       // Esto es parte del algoritmo original de Sprave para generar el N(0,1) base.
+                                       // La parte de `sigma * x` al final lo escala.
 
-
-/* SIGMA   --> standard deviation */
-
-/* L1: */
-    u = Uniform();
-    u0 = Uniform();
+    u = Uniform(); // Llama a randreal()
+    u0 = Uniform(); // Llama a randreal()
     if (u >= .919544406) {
     goto L2;
     }
@@ -100,80 +118,39 @@ double Gauss(double sigma)
     x = -y;
     }
   L10:
-    ret_val = sigma * x;
+    ret_val = sigma * x; // 'x' aquí es el N(0,1) base, escalado por 'sigma'
     return ret_val;
 }
 
+// Inicializa el generador de números aleatorios.
+void initrandom(int seed_val) // No es necesario que sea static si se declara en gauss1.h
+{
+    g_Seed_gauss = seed_val;
+    g_isinit_gauss = 0; // Permite que randreal vuelva a llamar a srand() con la nueva semilla
+}
+
+
+// Las funciones N() y randint() pueden quedarse si tu EE las necesita,
+// o eliminarse si no son usadas por ee_completo.cpp.
+// Por ahora las dejo, declarándolas también en el .h si ee_completo.cpp las va a usar.
+
 // Genera un número aleatorio con distribución normal N(m, sigma)
-double N(double m, double sigma)
+double N(double m, double sigma) // No es necesario que sea static si se declara en gauss1.h
 {
     return m + Gauss(sigma);
 }
 
-// Inicializa el generador de números aleatorios.
-// Si seed_val es 0, se usará el tiempo actual.
-// Si se llama varias veces, permite re-sembrar.
-void initrandom(int seed_val)
-{
-    g_Seed = seed_val;
-    g_isinit = 0; // Permite que randreal vuelva a llamar a srand() con la nueva semilla
-}
-
-// Genera un número aleatorio real entre [0, 1]
-double randreal(void)
-{
-    double result;
-
-    if (!g_isinit) {
-        if (g_Seed == 0) { // Si no se especificó una semilla o se pasó 0
-            srand((unsigned int)time(NULL)); // Usar el tiempo actual como semilla
-        } else {
-            srand((unsigned int)g_Seed); // Usar la semilla especificada
-        }
-        g_isinit = 1;
-    }
-    result = ((double)rand());
-    result /= ((double)RAND_MAX); // Asegurar división de punto flotante
-
-    return (result);
-}
-
 // Genera un número aleatorio entero entre [lo, hi] (inclusive)
-int randint(int lo, int hi)
+int randint(int lo, int hi) // No es necesario que sea static si se declara en gauss1.h
 {
-    // El +1 es para incluir 'hi' en el rango posible.
-    // (int) truncará el resultado.
     return (lo + (int)(randreal() * (hi - lo + 1.0)));
 }
 
-// ----- FUNCIÓN MAIN -----
+/*
+// ----- FUNCIÓN MAIN ----- ELIMINADA O COMENTADA -----
 // Punto de entrada del programa
 int main() {
-    // Inicializar el generador de números aleatorios.
-    // Puedes usar una semilla específica para obtener resultados reproducibles:
-    // initrandom(12345);
-    // O no llamar a initrandom (o llamar initrandom(0)) para usar el tiempo actual:
-    initrandom(0); // O comenta esta línea para el mismo efecto si g_Seed es 0 por defecto.
-
-    std::cout << "Generando numeros aleatorios Gaussianos:" << std::endl;
-
-    double media = 5.0;
-    double desviacion_estandar = 2.0;
-
-    std::cout << "Distribucion N(media=" << media << ", sigma=" << desviacion_estandar << "):" << std::endl;
-    for (int i = 0; i < 10; ++i) {
-        std::cout << N(media, desviacion_estandar) << std::endl;
-    }
-
-    std::cout << "\nDistribucion Gauss (media=0, sigma=" << desviacion_estandar << "):" << std::endl;
-    for (int i = 0; i < 10; ++i) {
-        std::cout << Gauss(desviacion_estandar) << std::endl;
-    }
-
-    std::cout << "\nNumero entero aleatorio entre 10 y 20:" << std::endl;
-    for (int i = 0; i < 5; ++i) {
-        std::cout << randint(10, 20) << std::endl;
-    }
-    
-    return 0; // Indicar que el programa terminó correctamente
+    // ... código de la main original ...
+    return 0; 
 }
+*/
